@@ -1,6 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
-
-set -e
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BACKUP_DIR="$ROOT/backups"
@@ -15,7 +14,9 @@ fi
 
 echo "Available backups:"
 select FILE in "${FILES[@]}"; do
-    [ -n "$FILE" ] && break
+    if [ -n "${FILE:-}" ]; then
+        break
+    fi
     echo "Invalid selection."
 done
 
@@ -27,13 +28,27 @@ if [ "$ANSWER" != "yes" ]; then
     exit 0
 fi
 
+if ! tar -tzf "$FILE" > /dev/null; then
+    echo "Invalid or corrupted backup archive."
+    exit 1
+fi
+
+CONTENTS="$(tar -tzf "$FILE")"
+
+if [ "$CONTENTS" != $'config/\nconfig/settings.conf' ] &&
+   [ "$CONTENTS" != "config/settings.conf" ]; then
+    echo "Unexpected files in backup. Restore rejected."
+    exit 1
+fi
+
 TEMP="$(mktemp -d)"
 trap 'rm -rf "$TEMP"' EXIT
 
-tar -xzf "$FILE" -C "$TEMP"
+tar -xzf "$FILE" -C "$TEMP" --no-same-owner
 
-if [ ! -f "$TEMP/config/settings.conf" ]; then
-    echo "Invalid backup."
+if [ ! -f "$TEMP/config/settings.conf" ] ||
+   [ -L "$TEMP/config/settings.conf" ]; then
+    echo "Invalid settings file in backup."
     exit 1
 fi
 
