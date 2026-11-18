@@ -17,6 +17,7 @@ An open-source Android customization toolkit powered by Termux, inspired by the 
 - Termux
 - Git
 - Bash
+- Python 3 (required for secure restore)
 
 ## Installation
 
@@ -34,7 +35,7 @@ Currently implemented:
 - Basic device diagnostics
 - Android environment detection
 - Configuration backup
-- Configuration restore foundation
+- Configuration restore with archive path, file type, and size validation
 
 More customization features are planned.
 
