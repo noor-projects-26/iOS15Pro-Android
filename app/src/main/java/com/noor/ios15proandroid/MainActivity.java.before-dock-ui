@@ -1,0 +1,644 @@
+package com.noor.ios15proandroid;
+
+import android.app.Activity;
+import android.text.format.DateFormat;
+import android.content.Intent;
+import android.content.ActivityNotFoundException;
+import android.os.Bundle;
+import android.os.Build;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.ScrollView;
+import android.widget.Toast;
+import android.widget.ImageView;
+import android.widget.GridLayout;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ApplicationInfo;
+import java.util.List;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+public class MainActivity extends Activity {
+
+    private final int BG = Color.rgb(15, 16, 21);
+    private final int CARD = Color.rgb(29, 31, 39);
+    private final int WHITE = Color.WHITE;
+    private final int MUTED = Color.LTGRAY;
+
+    private int dp(int value) {
+        return (int) (value * getResources()
+                .getDisplayMetrics().density);
+    }
+
+    private TextView makeText(String value, int size, int color) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        return t;
+    }
+
+    private LinearLayout makeCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(18), dp(15), dp(18), dp(15));
+        card.setBackgroundColor(CARD);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(12);
+        card.setLayoutParams(params);
+
+        return card;
+    }
+
+    private void addInfo(LinearLayout parent,
+                         String label, String value) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+
+        TextView name = makeText(label, 12, MUTED);
+        TextView data = makeText(value, 17, WHITE);
+        data.setTypeface(Typeface.DEFAULT_BOLD);
+
+        row.addView(name);
+
+        LinearLayout.LayoutParams valueParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        valueParams.topMargin = dp(5);
+        row.addView(data, valueParams);
+
+        LinearLayout.LayoutParams rowParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        rowParams.bottomMargin = dp(16);
+        parent.addView(row, rowParams);
+    }
+
+
+
+    private void addHomeAppIcon(
+            GridLayout grid, ResolveInfo info,
+            PackageManager pm, int index) {
+
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(3), dp(8), dp(3), dp(8));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageDrawable(info.loadIcon(pm));
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+        LinearLayout.LayoutParams iconParams =
+                new LinearLayout.LayoutParams(dp(50), dp(50));
+        tile.addView(icon, iconParams);
+
+        TextView label = makeText(
+                info.loadLabel(pm).toString(), 10, WHITE);
+        label.setGravity(Gravity.CENTER);
+        label.setMaxLines(1);
+
+        LinearLayout.LayoutParams labelParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        labelParams.topMargin = dp(5);
+        tile.addView(label, labelParams);
+
+        String packageName = info.activityInfo.packageName;
+
+        tile.setOnClickListener(v -> {
+            Intent launch = pm.getLaunchIntentForPackage(packageName);
+            if (launch != null) {
+                startActivity(launch);
+            } else {
+                Toast.makeText(this,
+                        "App cannot be opened",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        GridLayout.LayoutParams params =
+                new GridLayout.LayoutParams(
+                        GridLayout.spec(index / 4),
+                        GridLayout.spec(index % 4, 1f));
+        params.width = 0;
+        params.height = -2;
+        params.setMargins(dp(3), dp(3), dp(3), dp(3));
+
+        grid.addView(tile, params);
+    }
+
+
+    private void addDockApp(
+            LinearLayout dock, String packageName,
+            String activityName) {
+
+        PackageManager pm = getPackageManager();
+        Intent launch = new Intent(Intent.ACTION_MAIN);
+        launch.addCategory(Intent.CATEGORY_LAUNCHER);
+        launch.setPackage(packageName);
+
+        if (activityName != null) {
+            launch.setClassName(packageName, activityName);
+        }
+
+        List<ResolveInfo> matches = pm.queryIntentActivities(launch, 0);
+        if (matches.isEmpty()) return;
+
+        ResolveInfo info = matches.get(0);
+
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(dp(4), dp(8), dp(4), dp(8));
+
+        ImageView icon = new ImageView(this);
+        icon.setImageDrawable(info.loadIcon(pm));
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        tile.addView(icon, new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+        TextView label = makeText(
+                info.loadLabel(pm).toString(), 10, WHITE);
+        label.setGravity(Gravity.CENTER);
+        label.setMaxLines(1);
+
+        LinearLayout.LayoutParams labelParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        labelParams.topMargin = dp(4);
+        tile.addView(label, labelParams);
+
+        tile.setOnClickListener(v -> {
+            try {
+                startActivity(pm.getLaunchIntentForPackage(packageName));
+            } catch (Exception e) {
+                Toast.makeText(this, "App cannot be opened",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(0, -2, 1f);
+        dock.addView(tile, params);
+    }
+
+    private void showHomeScreen() {
+        getWindow().setStatusBarColor(Color.BLACK);
+        getWindow().setNavigationBarColor(BG);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(22), dp(18), dp(22), dp(20));
+        root.setBackgroundColor(BG);
+
+        TextView top = makeText("NOOR", 17, WHITE);
+        top.setTypeface(Typeface.DEFAULT_BOLD);
+        root.addView(top);
+
+        TextView island = makeText("●          NOOR", 12, WHITE);
+        island.setGravity(Gravity.CENTER);
+        island.setPadding(dp(24), dp(12), dp(24), dp(12));
+        island.setBackgroundColor(Color.BLACK);
+
+        LinearLayout.LayoutParams islandParams =
+                new LinearLayout.LayoutParams(dp(190), -2);
+        islandParams.gravity = Gravity.CENTER_HORIZONTAL;
+        islandParams.topMargin = dp(12);
+        root.addView(island, islandParams);
+
+        TextView clock = makeText(
+                DateFormat.getTimeFormat(this).format(new Date()),
+                64, WHITE);
+        clock.setGravity(Gravity.CENTER);
+        clock.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+
+        LinearLayout.LayoutParams clockParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        clockParams.topMargin = dp(35);
+        root.addView(clock, clockParams);
+
+        TextView date = makeText(
+                new SimpleDateFormat("EEEE, d MMMM").format(new Date()),
+                16, MUTED);
+        date.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams dateParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        dateParams.topMargin = dp(4);
+        dateParams.bottomMargin = dp(35);
+        root.addView(date, dateParams);
+
+
+        // HOME_SCREEN_APP_GRID
+        PackageManager homePm = getPackageManager();
+        Intent homeQuery = new Intent(Intent.ACTION_MAIN);
+        homeQuery.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        List<ResolveInfo> homeApps =
+                homePm.queryIntentActivities(homeQuery, 0);
+
+        Collections.sort(homeApps, new Comparator<ResolveInfo>() {
+            @Override
+            public int compare(ResolveInfo a, ResolveInfo b) {
+                return a.loadLabel(homePm).toString().compareToIgnoreCase(
+                        b.loadLabel(homePm).toString());
+            }
+        });
+
+        GridLayout homeGrid = new GridLayout(this);
+        homeGrid.setColumnCount(4);
+
+        int homeCount = Math.min(homeApps.size(), 8);
+        for (int i = 0; i < homeCount; i++) {
+            addHomeAppIcon(homeGrid, homeApps.get(i), homePm, i);
+        }
+
+        LinearLayout.LayoutParams homeGridParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        homeGridParams.topMargin = dp(22);
+        homeGridParams.bottomMargin = dp(18);
+        root.addView(homeGrid, homeGridParams);
+
+        TextView apps = makeText("All Apps  →", 16, WHITE);
+        apps.setGravity(Gravity.CENTER);
+        apps.setPadding(dp(16), dp(16), dp(16), dp(16));
+        apps.setBackgroundColor(CARD);
+        apps.setOnClickListener(v -> showLauncher());
+        root.addView(apps);
+
+        TextView settings = makeText("NOOR Settings  →", 16, WHITE);
+        settings.setGravity(Gravity.CENTER);
+        settings.setPadding(dp(16), dp(16), dp(16), dp(16));
+        settings.setBackgroundColor(CARD);
+
+        LinearLayout.LayoutParams settingsParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        settingsParams.topMargin = dp(12);
+        settings.setOnClickListener(v -> showHome());
+        root.addView(settings, settingsParams);
+
+        setContentView(root);
+    }
+
+    private void showHome() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(22), dp(28), dp(22), dp(20));
+        root.setBackgroundColor(BG);
+
+        TextView brand = makeText("NOOR", 30, WHITE);
+        brand.setTypeface(Typeface.DEFAULT_BOLD);
+        root.addView(brand);
+
+        TextView subtitle = makeText(
+                "A smarter Android experience", 14, MUTED);
+        LinearLayout.LayoutParams subParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(5);
+        subParams.bottomMargin = dp(30);
+        root.addView(subtitle, subParams);
+
+        addHomeCard(root, "Device Dashboard",
+                "Your Android device information and status", true, false);
+
+        addHomeCard(root, "Customization",
+                "Explore safe Android customization options", false, true);
+
+        LinearLayout appsCard = makeCard();
+        TextView appsTitle = makeText("Apps", 17, WHITE);
+        appsTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        appsCard.addView(appsTitle);
+
+        TextView appsDetail = makeText(
+                "View and open your installed applications", 13, MUTED);
+        LinearLayout.LayoutParams appsParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        appsParams.topMargin = dp(7);
+        appsCard.addView(appsDetail, appsParams);
+        appsCard.setOnClickListener(v -> showLauncher());
+        root.addView(appsCard);
+
+        addHomeCard(root, "Backup & Restore",
+                "Protect and manage your configuration backups", false, false);
+
+        addHomeCard(root, "About NOOR",
+                "Version 0.1.0  •  Android customization toolkit", false, false);
+
+        TextView footer = makeText(
+                "DESIGNED FOR ANDROID  •  BUILT WITH NOOR",
+                10, Color.GRAY);
+        footer.setGravity(Gravity.CENTER);
+        root.addView(footer);
+
+        setContentView(root);
+    }
+
+    private void addHomeCard(LinearLayout root,
+                             String title, String detail,
+                             boolean dashboard, boolean customization) {
+        LinearLayout card = makeCard();
+
+        TextView heading = makeText(title, 17, WHITE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        card.addView(heading);
+
+        TextView description = makeText(detail, 13, MUTED);
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(7);
+        card.addView(description, params);
+
+        if (dashboard) {
+            card.setOnClickListener(v -> showDashboard());
+        } else if (customization) {
+            card.setOnClickListener(v -> showCustomization());
+        }
+
+        root.addView(card);
+    }
+
+    private void addCustomizationOption(LinearLayout root,
+                                        String title, String detail) {
+        LinearLayout card = makeCard();
+
+        TextView heading = makeText(title, 17, WHITE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        card.addView(heading);
+
+        TextView description = makeText(detail, 13, MUTED);
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(7);
+        card.addView(description, params);
+
+        if (title.equals("Wallpaper & Appearance")) {
+            card.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER);
+                    startActivity(intent);
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(this,
+                            "Wallpaper picker is not available",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        root.addView(card);
+    }
+
+    private void showCustomization() {
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(22), dp(20), dp(22), dp(25));
+        content.setBackgroundColor(BG);
+
+        TextView back = makeText("‹   BACK", 15, WHITE);
+        back.setTypeface(Typeface.DEFAULT_BOLD);
+        back.setPadding(0, dp(8), 0, dp(22));
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+
+        TextView heading = makeText("Customization", 27, WHITE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        content.addView(heading);
+
+        TextView subtitle = makeText(
+                "Make your Android experience yours",
+                14, MUTED);
+        LinearLayout.LayoutParams subParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(7);
+        subParams.bottomMargin = dp(25);
+        content.addView(subtitle, subParams);
+
+        addCustomizationOption(content,
+                "Wallpaper & Appearance",
+                "Personalize your screen background and visual style");
+
+        addCustomizationOption(content,
+                "Home Screen",
+                "Plan your layout, app placement and home screen design");
+
+        addCustomizationOption(content,
+                "App Icons",
+                "Explore an iOS-inspired icon experience");
+
+        addCustomizationOption(content,
+                "Widgets & Dock",
+                "Plan your widgets and bottom dock layout");
+
+        TextView note = makeText(
+                "Customization options will be enabled step by step",
+                12, Color.GRAY);
+        note.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams noteParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        noteParams.topMargin = dp(18);
+        content.addView(note, noteParams);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    private void showDashboard() {
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(22), dp(20), dp(22), dp(25));
+        content.setBackgroundColor(BG);
+
+        TextView back = makeText("‹   BACK", 15, WHITE);
+        back.setTypeface(Typeface.DEFAULT_BOLD);
+        back.setPadding(0, dp(8), 0, dp(22));
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+
+        TextView heading = makeText("Device Dashboard", 27, WHITE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        content.addView(heading);
+
+        TextView subtitle = makeText(
+                "Your device at a glance", 14, MUTED);
+        LinearLayout.LayoutParams subParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(7);
+        subParams.bottomMargin = dp(25);
+        content.addView(subtitle, subParams);
+
+        LinearLayout overview = makeCard();
+        TextView model = makeText(Build.MODEL, 23, WHITE);
+        model.setTypeface(Typeface.DEFAULT_BOLD);
+        overview.addView(model);
+
+        TextView brand = makeText(
+                Build.BRAND.toUpperCase() + " DEVICE",
+                12, MUTED);
+        LinearLayout.LayoutParams brandParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        brandParams.topMargin = dp(7);
+        overview.addView(brand, brandParams);
+        content.addView(overview);
+
+        LinearLayout details = makeCard();
+        addInfo(details, "DEVICE BRAND", Build.BRAND);
+        addInfo(details, "MODEL", Build.MODEL);
+        addInfo(details, "DEVICE CODENAME", Build.DEVICE);
+        addInfo(details, "ANDROID VERSION", Build.VERSION.RELEASE);
+        addInfo(details, "SDK VERSION",
+                String.valueOf(Build.VERSION.SDK_INT));
+        String[] abis = Build.SUPPORTED_ABIS;
+        addInfo(details, "CPU ARCHITECTURE",
+                abis.length > 0 ? abis[0] : "Unknown");
+        content.addView(details);
+
+        TextView note = makeText(
+                "Read-only device information • No root required",
+                12, Color.GRAY);
+        note.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams noteParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        noteParams.topMargin = dp(10);
+        content.addView(note, noteParams);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+
+    private void showLauncher() {
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(16), dp(18), dp(16), dp(20));
+        content.setBackgroundColor(BG);
+
+        TextView back = makeText("‹   NOOR HOME", 15, WHITE);
+        back.setTypeface(Typeface.DEFAULT_BOLD);
+        back.setPadding(0, dp(8), 0, dp(20));
+        back.setOnClickListener(v -> showHome());
+        content.addView(back);
+
+        TextView heading = makeText("Apps", 28, WHITE);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        content.addView(heading);
+
+        TextView subtitle = makeText(
+                "Your installed applications", 13, MUTED);
+        LinearLayout.LayoutParams subParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(5);
+        subParams.bottomMargin = dp(20);
+        content.addView(subtitle, subParams);
+
+        PackageManager pm = getPackageManager();
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        List<ResolveInfo> apps =
+                pm.queryIntentActivities(query, 0);
+
+        Collections.sort(apps, new Comparator<ResolveInfo>() {
+            @Override
+            public int compare(ResolveInfo a, ResolveInfo b) {
+                return a.loadLabel(pm).toString().compareToIgnoreCase(
+                        b.loadLabel(pm).toString());
+            }
+        });
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setUseDefaultMargins(false);
+
+        for (int i = 0; i < apps.size(); i++) {
+            ResolveInfo info = apps.get(i);
+            String appName = info.loadLabel(pm).toString();
+            String packageName = info.activityInfo.packageName;
+
+            LinearLayout tile = new LinearLayout(this);
+            tile.setOrientation(LinearLayout.VERTICAL);
+            tile.setGravity(Gravity.CENTER);
+            tile.setPadding(dp(3), dp(8), dp(3), dp(8));
+
+            ImageView icon = new ImageView(this);
+            icon.setImageDrawable(info.loadIcon(pm));
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+            LinearLayout.LayoutParams iconParams =
+                    new LinearLayout.LayoutParams(dp(52), dp(52));
+            tile.addView(icon, iconParams);
+
+            TextView label = makeText(appName, 11, WHITE);
+            label.setGravity(Gravity.CENTER);
+            label.setMaxLines(2);
+
+            LinearLayout.LayoutParams labelParams =
+                    new LinearLayout.LayoutParams(-1, -2);
+            labelParams.topMargin = dp(6);
+            tile.addView(label, labelParams);
+
+            tile.setOnClickListener(v -> {
+                Intent launch = pm.getLaunchIntentForPackage(packageName);
+                if (launch != null) {
+                    startActivity(launch);
+                } else {
+                    Toast.makeText(this,
+                            "App cannot be opened",
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            GridLayout.LayoutParams cellParams =
+                    new GridLayout.LayoutParams(
+                            GridLayout.spec(i / 4),
+                            GridLayout.spec(i % 4, 1f));
+            cellParams.width = 0;
+            cellParams.height = -2;
+            cellParams.setMargins(dp(3), dp(4), dp(3), dp(8));
+
+            grid.addView(tile, cellParams);
+        }
+
+        if (apps.isEmpty()) {
+            TextView empty = makeText(
+                    "No launchable apps found", 14, MUTED);
+            content.addView(empty);
+        } else {
+            content.addView(grid);
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content);
+        setContentView(scroll);
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(BG);
+        getWindow().setNavigationBarColor(BG);
+        showHomeScreen();
+    }
+
+    @Override
+    public void onBackPressed() {
+        showHome();
+    }
+}
