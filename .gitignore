@@ -2,3 +2,10 @@ backups/*.tar.gz
 *.log
 .DS_Store
 core/restore.sh.before-security
+
+# Gradle and Android build outputs
+.gradle/
+**/.gradle/
+build/
+**/build/
+local.properties
